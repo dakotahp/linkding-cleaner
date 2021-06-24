@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+	"encoding/json"
 	"log"
 	"net/http"
 	"strconv"
+	"io/ioutil"
 )
 
 type Bookmark struct {
@@ -21,6 +23,40 @@ type Bookmarks struct {
 	Next     string
 	Previous string
 	Results  []Bookmark
+}
+
+/*
+ * Gets all bookmarks from API
+ */
+func getAllBookmarks() *Bookmarks {
+	url := baseUrl + "/api/bookmarks/"
+	bearer := "Token " + token
+
+	req, err := http.NewRequest("GET", url, nil)
+	req.Header.Add("Authorization", bearer)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Println("Error on response.\n[ERROR] -", err)
+	}
+
+	if resp.Body != nil {
+		defer resp.Body.Close()
+	}
+
+	body, readErr := ioutil.ReadAll(resp.Body)
+	if readErr != nil {
+		log.Fatal(readErr)
+	}
+
+	var bookmarks1 *Bookmarks
+	jsonErr := json.Unmarshal(body, &bookmarks1)
+	if jsonErr != nil {
+		log.Fatal(jsonErr)
+	}
+
+	return bookmarks1
 }
 
 /*
