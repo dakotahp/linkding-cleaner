@@ -1,4 +1,4 @@
-name: Lint
+name: Go fmt
 
 on:
   # Trigger the workflow on push or pull request,
@@ -12,7 +12,7 @@ on:
 
 jobs:
   run-linters:
-    name: Run linters
+    name: Run linter
     runs-on: ubuntu-latest
 
     steps:
@@ -28,3 +28,4 @@ jobs:
         uses: wearerequired/lint-action@v1
         with:
           gofmt: true
+          auto_fix: true
