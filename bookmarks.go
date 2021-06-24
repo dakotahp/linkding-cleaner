@@ -1,10 +1,10 @@
 package main
 
 import (
-	"net/http"
 	"fmt"
-	"strconv"
 	"log"
+	"net/http"
+	"strconv"
 )
 
 type Bookmark struct {
@@ -27,7 +27,7 @@ type Bookmarks struct {
  * Makes a request to the bookmark URL and checks HTTP status codes.
  * If a 404 is found, it delegates archiving the link.
  */
- func testBookmark(bmark *Bookmark) {
+func testBookmark(bmark *Bookmark) {
 	var resp *http.Response
 	var err error
 	resp, err = http.Get(bmark.Url)
