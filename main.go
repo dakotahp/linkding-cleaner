@@ -1,10 +1,7 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"log"
 	"net/http"
 
 	"github.com/spf13/viper"
@@ -16,35 +13,10 @@ var token string
 func main() {
 	readConfig()
 
-	url := baseUrl + "/api/bookmarks/"
-	bearer := "Token " + token
+	bookmarks := getAllBookmarks()
 
-	req, err := http.NewRequest("GET", url, nil)
-	req.Header.Add("Authorization", bearer)
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Println("Error on response.\n[ERROR] -", err)
-	}
-
-	if resp.Body != nil {
-		defer resp.Body.Close()
-	}
-
-	body, readErr := ioutil.ReadAll(resp.Body)
-	if readErr != nil {
-		log.Fatal(readErr)
-	}
-
-	var bookmarks1 *Bookmarks
-	jsonErr := json.Unmarshal(body, &bookmarks1)
-	if jsonErr != nil {
-		log.Fatal(jsonErr)
-	}
-
-	for i := 0; i < len(bookmarks1.Results); i++ {
-		testBookmark(&bookmarks1.Results[i])
+	for i := 0; i < len(bookmarks.Results); i++ {
+		testBookmark(&bookmarks.Results[i])
 	}
 }
 
