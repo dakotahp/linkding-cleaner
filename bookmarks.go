@@ -1,12 +1,12 @@
 package main
 
 import (
-	"fmt"
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
-	"io/ioutil"
 )
 
 type Bookmark struct {
