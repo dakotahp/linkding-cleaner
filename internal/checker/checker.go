@@ -15,7 +15,10 @@ type Result struct {
 // (cheaper, no body) and retries with GET if the server returns 405.
 func Check(ctx context.Context, url string) Result {
 	code, err := doRequest(ctx, http.MethodHead, url)
-	if err != nil || code == http.StatusMethodNotAllowed {
+	if err != nil {
+		return Result{StatusCode: code, Err: err}
+	}
+	if code == http.StatusMethodNotAllowed {
 		code, err = doRequest(ctx, http.MethodGet, url)
 	}
 	return Result{StatusCode: code, Err: err}

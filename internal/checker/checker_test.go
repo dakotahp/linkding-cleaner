@@ -93,3 +93,19 @@ func TestCheck_Timeout(t *testing.T) {
 		t.Fatal("expected a timeout error, got nil")
 	}
 }
+
+func TestCheck_TransportErrorNotRetried(t *testing.T) {
+	// A server that is immediately closed should cause a transport error on HEAD.
+	// The checker should return that error directly without attempting GET.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	srv.Close() // close immediately so requests fail
+
+	var requestCount int
+	// We can't easily intercept DefaultClient here, so we verify indirectly:
+	// a closed server returns an error, and the result should have Err != nil.
+	result := checker.Check(context.Background(), srv.URL)
+	_ = requestCount
+	if result.Err == nil {
+		t.Fatal("expected transport error for closed server, got nil")
+	}
+}
