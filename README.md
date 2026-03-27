@@ -1,23 +1,66 @@
 # linkding-cleaner
 
-A command line application that scans your bookmarks and archives dead links.
+A CLI tool that checks all your [linkding](https://github.com/sissbruecker/linkding) bookmarks
+for broken URLs and archives any that return 404.
 
-***What is Linkding?**: Linkding is a self-hosted bookmark service like Pinboard and Delicious. Only private because it is self-hosted.*
+## Usage
+
+```sh
+linkding-cleaner --url https://links.example.com
+```
+
+Required:
+
+| Flag / Env var | Description |
+|----------------|-------------|
+| `--url` | Base URL of your linkding instance |
+| `--token` or `LINKDING_TOKEN` | Your linkding API token |
+
+Optional:
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--concurrency` | `10` | Number of parallel URL checks |
+| `--timeout` | `10s` | Per-request timeout |
+
+## Examples
+
+Using an environment variable for the token:
+
+```sh
+export LINKDING_TOKEN=your-token-here
+linkding-cleaner --url https://links.example.com
+```
+
+Passing the token inline (useful in scripts):
+
+```sh
+linkding-cleaner --url https://links.example.com --token your-token-here
+```
+
+Tune concurrency and timeout for slower connections:
+
+```sh
+linkding-cleaner --url https://links.example.com --concurrency 5 --timeout 30s
+```
 
 ## Install
 
-Download repository and run `make build` to compile.
+```sh
+go install linkding-cleaner/cmd/linkding-cleaner@latest
+```
 
-### Configuration
+Or build from source:
 
-Download [config.example.yml](https://github.com/dakotahp/linkding-cleaner/blob/master/config.example.yml) and save it as `config.yml`. Enter your domain used for your Linkding install in the `base_url` value. Then, enter your API Token from Linkding in the `api_token` value. This is found at `youdomain.com/settings/api` in your Linkding app.
+```sh
+git clone https://github.com/dakotahp/linkding-cleaner
+cd linkding-cleaner
+make build
+```
 
-Put the config file either in the same place as the app or in `$HOME/.linkdig-cleaner/config.yml`.
+## Output
 
-## To Do
-
-- Handle more than initial 100 list
-
-## License
-
-[MIT](https://github.com/dakotahp/linkding-cleaner/blob/master/LICENSE)
+- Red `[404]` — broken link, automatically archived in linkding
+- Yellow `[403]` — forbidden (not archived)
+- Plain `[200]` — healthy
+- `[ERR]` — network error or timeout (skipped)
