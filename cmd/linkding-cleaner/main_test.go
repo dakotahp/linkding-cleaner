@@ -50,7 +50,7 @@ func TestRun_ArchivesNotFoundBookmarks(t *testing.T) {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(fakeResponse{
+		_ = json.NewEncoder(w).Encode(fakeResponse{
 			Count: 2,
 			Results: []fakeBookmark{
 				{ID: 1, URL: notFoundSrv.URL, WebsiteTitle: "Gone"},
@@ -106,13 +106,13 @@ func TestRun_MultiPageFetchAndCheck(t *testing.T) {
 			for i := range bmarks {
 				bmarks[i] = fakeBookmark{ID: i + 1, URL: notFoundSrv.URL}
 			}
-			json.NewEncoder(w).Encode(fakeResponse{Count: 150, Results: bmarks})
+			_ = json.NewEncoder(w).Encode(fakeResponse{Count: 150, Results: bmarks})
 		} else {
 			bmarks := make([]fakeBookmark, 50)
 			for i := range bmarks {
 				bmarks[i] = fakeBookmark{ID: 101 + i, URL: okSrv.URL}
 			}
-			json.NewEncoder(w).Encode(fakeResponse{Count: 150, Results: bmarks})
+			_ = json.NewEncoder(w).Encode(fakeResponse{Count: 150, Results: bmarks})
 		}
 	}))
 	defer linkdingSrv.Close()
@@ -152,7 +152,7 @@ func TestRun_TokenFromEnv(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotAuth = r.Header.Get("Authorization")
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(fakeResponse{Count: 0, Results: []fakeBookmark{}})
+		_ = json.NewEncoder(w).Encode(fakeResponse{Count: 0, Results: []fakeBookmark{}})
 	}))
 	defer srv.Close()
 

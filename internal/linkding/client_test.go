@@ -21,7 +21,7 @@ func TestFetchPage_SinglePage(t *testing.T) {
 			t.Errorf("expected offset=0, got %s", r.URL.Query().Get("offset"))
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(bookmarksResponse{
+		_ = json.NewEncoder(w).Encode(bookmarksResponse{
 			Count: 2,
 			Results: []Bookmark{
 				{ID: 1, URL: "https://example.com", WebsiteTitle: "Example"},
@@ -52,7 +52,7 @@ func TestFetchPage_AuthHeader(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotAuth = r.Header.Get("Authorization")
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(bookmarksResponse{Count: 0, Results: []Bookmark{}})
+		_ = json.NewEncoder(w).Encode(bookmarksResponse{Count: 0, Results: []Bookmark{}})
 	}))
 	defer srv.Close()
 
@@ -93,7 +93,7 @@ func makeBookmarks(startID, count int) []Bookmark {
 func TestFetchAllBookmarks_SinglePage(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(bookmarksResponse{
+		_ = json.NewEncoder(w).Encode(bookmarksResponse{
 			Count:   2,
 			Results: makeBookmarks(1, 2),
 		})
@@ -116,12 +116,12 @@ func TestFetchAllBookmarks_MultiPage(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		switch offset {
 		case "", "0":
-			json.NewEncoder(w).Encode(bookmarksResponse{
+			_ = json.NewEncoder(w).Encode(bookmarksResponse{
 				Count:   150,
 				Results: makeBookmarks(1, 100),
 			})
 		case "100":
-			json.NewEncoder(w).Encode(bookmarksResponse{
+			_ = json.NewEncoder(w).Encode(bookmarksResponse{
 				Count:   150,
 				Results: makeBookmarks(101, 50),
 			})
@@ -155,7 +155,7 @@ func TestFetchAllBookmarks_ExactlyOnePage(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requestCount++
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(bookmarksResponse{
+		_ = json.NewEncoder(w).Encode(bookmarksResponse{
 			Count:   100,
 			Results: makeBookmarks(1, 100),
 		})
