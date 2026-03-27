@@ -1,5 +1,5 @@
-module linkdig-cleaner
+module github.com/dakotahp/linkding-cleaner
 
-go 1.16
+go 1.24.0
 
-require github.com/spf13/viper v1.8.0 // indirect
+require golang.org/x/sync v0.12.0

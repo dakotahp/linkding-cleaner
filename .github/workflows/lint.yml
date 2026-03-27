@@ -1,8 +1,6 @@
-name: Go fmt
+name: Lint
 
 on:
-  # Trigger the workflow on push or pull request,
-  # but only for the main branch
   push:
     branches:
       - master
@@ -11,21 +9,31 @@ on:
       - master
 
 jobs:
-  run-linters:
-    name: Run linter
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check out Git repository
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-go@v1
+      - uses: actions/setup-go@v5
         with:
-          go-version: '1.16.5'
-      - run: go version
+          go-version: '1.25'
 
-      - name: Run linters
-        uses: wearerequired/lint-action@v1
+      - name: go vet
+        run: go vet ./...
+
+      - name: gofmt
+        run: |
+          files=$(gofmt -l .)
+          if [ -n "$files" ]; then
+            echo "Files not formatted:"
+            echo "$files"
+            exit 1
+          fi
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
         with:
-          gofmt: true
-          auto_fix: true
+          version: latest
+          args: --enable errcheck
