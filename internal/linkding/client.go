@@ -61,7 +61,6 @@ func (c *Client) FetchAllBookmarks(ctx context.Context) ([]Bookmark, error) {
 
 	g, gctx := errgroup.WithContext(ctx)
 	for i := 1; i < totalPages; i++ {
-		i := i // Go <1.22 loop var capture; harmless in 1.24
 		g.Go(func() error {
 			page, err := c.fetchPage(gctx, i*pageSize)
 			if err != nil {
@@ -75,7 +74,7 @@ func (c *Client) FetchAllBookmarks(ctx context.Context) ([]Bookmark, error) {
 		return nil, err
 	}
 
-	var all []Bookmark
+	all := make([]Bookmark, 0, first.Count)
 	for _, p := range pages {
 		all = append(all, p...)
 	}
