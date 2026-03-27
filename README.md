@@ -22,6 +22,7 @@ Optional:
 |------|---------|-------------|
 | `--concurrency` | `10` | Number of parallel URL checks |
 | `--timeout` | `10s` | Per-request timeout |
+| `--version` | | Print version and exit |
 
 ## Examples
 
@@ -46,17 +47,46 @@ linkding-cleaner --url https://links.example.com --concurrency 5 --timeout 30s
 
 ## Install
 
+**Homebrew (macOS):**
+
 ```sh
-go install linkding-cleaner/cmd/linkding-cleaner@latest
+brew install dakotahp/tap/linkding-cleaner
 ```
 
-Or build from source:
+**Go install:**
+
+```sh
+go install github.com/dakotahp/linkding-cleaner/cmd/linkding-cleaner@latest
+```
+
+**Download a binary** from the [releases page](https://github.com/dakotahp/linkding-cleaner/releases).
+
+**Build from source:**
 
 ```sh
 git clone https://github.com/dakotahp/linkding-cleaner
 cd linkding-cleaner
-make build
+go build ./cmd/linkding-cleaner
 ```
+
+## Releasing
+
+Releases are automated via [GoReleaser](https://goreleaser.com) and GitHub Actions. Pushing a `v*` tag triggers the release workflow, which:
+
+- Builds binaries for Linux, macOS, and Windows (amd64 + arm64)
+- Creates a GitHub Release with a changelog and `checksums.txt`
+- Updates the [Homebrew tap](https://github.com/dakotahp/homebrew-tap) formula
+
+**To cut a release:**
+
+```sh
+git tag v1.2.3
+git push origin v1.2.3
+```
+
+The workflow requires two repository secrets:
+- `GITHUB_TOKEN` — provided automatically by GitHub Actions
+- `HOMEBREW_TAP_GITHUB_TOKEN` — a personal access token with write access to the `homebrew-tap` repo
 
 ## Output
 
