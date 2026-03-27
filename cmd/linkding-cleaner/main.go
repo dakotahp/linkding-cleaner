@@ -9,10 +9,10 @@ import (
 	"os"
 	"time"
 
-	"golang.org/x/sync/errgroup"
 	"github.com/dakotahp/linkding-cleaner/internal/checker"
 	"github.com/dakotahp/linkding-cleaner/internal/linkding"
 	"github.com/dakotahp/linkding-cleaner/internal/reporter"
+	"golang.org/x/sync/errgroup"
 )
 
 var version = "dev"
