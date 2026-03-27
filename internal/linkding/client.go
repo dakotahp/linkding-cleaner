@@ -65,7 +65,7 @@ func (c *Client) fetchPage(ctx context.Context, offset int) (*bookmarksResponse,
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("linkding API returned status %d", resp.StatusCode)
+		return nil, fmt.Errorf("linkding API returned status %d (offset %d)", resp.StatusCode, offset)
 	}
 
 	var result bookmarksResponse
