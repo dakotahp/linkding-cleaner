@@ -105,3 +105,24 @@ func (c *Client) fetchPage(ctx context.Context, offset int) (*bookmarksResponse,
 	}
 	return &result, nil
 }
+
+// Archive sends a POST to archive the bookmark with the given ID.
+func (c *Client) Archive(ctx context.Context, id int) error {
+	url := fmt.Sprintf("%s/api/bookmarks/%d/archive/", c.BaseURL, id)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Token "+c.Token)
+
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("archive request returned status %d", resp.StatusCode)
+	}
+	return nil
+}

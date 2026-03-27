@@ -174,3 +174,40 @@ func TestFetchAllBookmarks_ExactlyOnePage(t *testing.T) {
 		t.Errorf("expected exactly 1 request, got %d", requestCount)
 	}
 }
+
+func TestArchive_SendsCorrectRequest(t *testing.T) {
+	var gotMethod, gotPath, gotAuth string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod = r.Method
+		gotPath = r.URL.Path
+		gotAuth = r.Header.Get("Authorization")
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	c := New(srv.URL, "test-token")
+	if err := c.Archive(context.Background(), 42); err != nil {
+		t.Fatal(err)
+	}
+	if gotMethod != http.MethodPost {
+		t.Errorf("expected POST, got %s", gotMethod)
+	}
+	if gotPath != "/api/bookmarks/42/archive/" {
+		t.Errorf("expected /api/bookmarks/42/archive/, got %s", gotPath)
+	}
+	if gotAuth != "Token test-token" {
+		t.Errorf("expected 'Token test-token', got %s", gotAuth)
+	}
+}
+
+func TestArchive_ReturnsErrorOnFailure(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	c := New(srv.URL, "test-token")
+	if err := c.Archive(context.Background(), 1); err == nil {
+		t.Fatal("expected error for 500 response, got nil")
+	}
+}
