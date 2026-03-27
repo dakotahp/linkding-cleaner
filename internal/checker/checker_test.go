@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"linkding-cleaner/internal/checker"
+	"github.com/dakotahp/linkding-cleaner/internal/checker"
 )
 
 func TestCheck_200(t *testing.T) {

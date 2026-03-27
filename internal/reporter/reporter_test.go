@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"linkding-cleaner/internal/reporter"
+	"github.com/dakotahp/linkding-cleaner/internal/reporter"
 )
 
 func TestRender_404_IsRed(t *testing.T) {

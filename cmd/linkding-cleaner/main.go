@@ -10,10 +10,12 @@ import (
 	"time"
 
 	"golang.org/x/sync/errgroup"
-	"linkding-cleaner/internal/checker"
-	"linkding-cleaner/internal/linkding"
-	"linkding-cleaner/internal/reporter"
+	"github.com/dakotahp/linkding-cleaner/internal/checker"
+	"github.com/dakotahp/linkding-cleaner/internal/linkding"
+	"github.com/dakotahp/linkding-cleaner/internal/reporter"
 )
+
+var version = "dev"
 
 func main() {
 	if err := run(os.Args[1:], os.Stdout); err != nil && err != flag.ErrHelp {
@@ -30,9 +32,15 @@ func run(args []string, stdout io.Writer) error {
 	tokenFlag := fs.String("token", "", "linkding API token (overrides LINKDING_TOKEN env var)")
 	concurrency := fs.Int("concurrency", 10, "number of parallel URL checks")
 	timeout := fs.Duration("timeout", 10*time.Second, "per-request timeout for URL checks")
+	showVersion := fs.Bool("version", false, "print version and exit")
 
 	if err := fs.Parse(args); err != nil {
 		return err
+	}
+
+	if *showVersion {
+		fmt.Fprintln(stdout, version)
+		return nil
 	}
 
 	if *urlFlag == "" {

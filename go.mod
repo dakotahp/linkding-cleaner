@@ -1,4 +1,4 @@
-module linkding-cleaner
+module github.com/dakotahp/linkding-cleaner
 
 go 1.25.0
 
