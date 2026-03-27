@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+
+	"golang.org/x/sync/errgroup"
 )
 
 const pageSize = 100
@@ -40,14 +42,44 @@ func New(baseURL, token string) *Client {
 	}
 }
 
-// FetchAllBookmarks returns all bookmarks. Pagination is handled internally.
-// Stub — full implementation in Task 3.
+// FetchAllBookmarks returns all bookmarks from the linkding API,
+// fetching additional pages in parallel if the total exceeds pageSize.
 func (c *Client) FetchAllBookmarks(ctx context.Context) ([]Bookmark, error) {
-	page, err := c.fetchPage(ctx, 0)
+	first, err := c.fetchPage(ctx, 0)
 	if err != nil {
 		return nil, err
 	}
-	return page.Results, nil
+
+	totalPages := (first.Count + pageSize - 1) / pageSize
+	if totalPages <= 1 {
+		return first.Results, nil
+	}
+
+	// Pre-allocate slice so each goroutine writes to its own index — no mutex needed.
+	pages := make([][]Bookmark, totalPages)
+	pages[0] = first.Results
+
+	g, gctx := errgroup.WithContext(ctx)
+	for i := 1; i < totalPages; i++ {
+		i := i // Go <1.22 loop var capture; harmless in 1.24
+		g.Go(func() error {
+			page, err := c.fetchPage(gctx, i*pageSize)
+			if err != nil {
+				return err
+			}
+			pages[i] = page.Results
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+
+	var all []Bookmark
+	for _, p := range pages {
+		all = append(all, p...)
+	}
+	return all, nil
 }
 
 func (c *Client) fetchPage(ctx context.Context, offset int) (*bookmarksResponse, error) {

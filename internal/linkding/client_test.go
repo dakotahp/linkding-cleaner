@@ -3,6 +3,7 @@ package linkding
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -75,5 +76,101 @@ func TestFetchPage_APIError(t *testing.T) {
 	_, err := c.fetchPage(context.Background(), 0)
 	if err == nil {
 		t.Fatal("expected error for 401 response, got nil")
+	}
+}
+
+func makeBookmarks(startID, count int) []Bookmark {
+	b := make([]Bookmark, count)
+	for i := range b {
+		b[i] = Bookmark{
+			ID:  startID + i,
+			URL: fmt.Sprintf("https://example.com/%d", startID+i),
+		}
+	}
+	return b
+}
+
+func TestFetchAllBookmarks_SinglePage(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(bookmarksResponse{
+			Count:   2,
+			Results: makeBookmarks(1, 2),
+		})
+	}))
+	defer srv.Close()
+
+	c := New(srv.URL, "test-token")
+	bookmarks, err := c.FetchAllBookmarks(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(bookmarks) != 2 {
+		t.Errorf("expected 2 bookmarks, got %d", len(bookmarks))
+	}
+}
+
+func TestFetchAllBookmarks_MultiPage(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		offset := r.URL.Query().Get("offset")
+		w.Header().Set("Content-Type", "application/json")
+		switch offset {
+		case "", "0":
+			json.NewEncoder(w).Encode(bookmarksResponse{
+				Count:   150,
+				Results: makeBookmarks(1, 100),
+			})
+		case "100":
+			json.NewEncoder(w).Encode(bookmarksResponse{
+				Count:   150,
+				Results: makeBookmarks(101, 50),
+			})
+		default:
+			t.Errorf("unexpected offset: %s", offset)
+			w.WriteHeader(http.StatusBadRequest)
+		}
+	}))
+	defer srv.Close()
+
+	c := New(srv.URL, "test-token")
+	bookmarks, err := c.FetchAllBookmarks(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(bookmarks) != 150 {
+		t.Errorf("expected 150 bookmarks, got %d", len(bookmarks))
+	}
+	// Verify page ordering: first 100 have IDs 1-100, next 50 have IDs 101-150
+	if bookmarks[0].ID != 1 {
+		t.Errorf("expected first bookmark ID=1, got %d", bookmarks[0].ID)
+	}
+	if bookmarks[100].ID != 101 {
+		t.Errorf("expected bookmark[100] ID=101, got %d", bookmarks[100].ID)
+	}
+}
+
+func TestFetchAllBookmarks_ExactlyOnePage(t *testing.T) {
+	// count == pageSize should NOT trigger a second fetch
+	var requestCount int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(bookmarksResponse{
+			Count:   100,
+			Results: makeBookmarks(1, 100),
+		})
+	}))
+	defer srv.Close()
+
+	c := New(srv.URL, "test-token")
+	bookmarks, err := c.FetchAllBookmarks(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(bookmarks) != 100 {
+		t.Errorf("expected 100 bookmarks, got %d", len(bookmarks))
+	}
+	if requestCount != 1 {
+		t.Errorf("expected exactly 1 request, got %d", requestCount)
 	}
 }
