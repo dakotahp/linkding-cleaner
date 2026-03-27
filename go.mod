@@ -1,5 +1,3 @@
-module linkdig-cleaner
+module linkding-cleaner
 
-go 1.16
-
-require github.com/spf13/viper v1.8.0 // indirect
+go 1.24

@@ -1,5 +1,10 @@
-build:
-	go build -o linkdig-cleaner
+.PHONY: build test lint
 
-run:
-	go run .
+build:
+	go build -o linkding-cleaner ./cmd/linkding-cleaner/
+
+test:
+	go test ./...
+
+lint:
+	gofmt -l . && go vet ./...
