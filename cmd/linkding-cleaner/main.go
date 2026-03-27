@@ -65,9 +65,13 @@ func run(args []string, stdout io.Writer) error {
 
 	for _, bmark := range bookmarks {
 		bmark := bmark
-		sem <- struct{}{}
 		g.Go(func() error {
-			defer func() { <-sem }()
+			select {
+			case sem <- struct{}{}:
+				defer func() { <-sem }()
+			case <-gctx.Done():
+				return gctx.Err()
+			}
 
 			checkCtx, cancel := context.WithTimeout(gctx, *timeout)
 			defer cancel()
