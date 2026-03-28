@@ -9,9 +9,11 @@ import (
 	"os"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/dakotahp/linkding-cleaner/internal/checker"
 	"github.com/dakotahp/linkding-cleaner/internal/linkding"
 	"github.com/dakotahp/linkding-cleaner/internal/reporter"
+	"github.com/mattn/go-isatty"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -75,6 +77,20 @@ func run(args []string, stdout io.Writer) error {
 	fmt.Fprintf(stdout, "Checking %d bookmarks (concurrency=%d, timeout=%s)...\n",
 		len(bookmarks), *concurrency, *timeout)
 
+	start := time.Now()
+
+	// Start progress bar on TTY only.
+	var prog *tea.Program
+	var progDone chan struct{}
+	if len(bookmarks) > 0 && isatty.IsTerminal(os.Stdout.Fd()) {
+		prog = tea.NewProgram(newProgressModel(len(bookmarks)))
+		progDone = make(chan struct{})
+		go func() {
+			prog.Run() //nolint:errcheck
+			close(progDone)
+		}()
+	}
+
 	// Pass 1: concurrent URL checks — collect results, do not archive yet.
 	results := make([]checkResult, len(bookmarks))
 	g, gctx := errgroup.WithContext(ctx)
@@ -95,12 +111,24 @@ func run(args []string, stdout io.Writer) error {
 
 			r := checker.Check(checkCtx, bmark.URL)
 			results[i] = checkResult{bookmark: bmark, statusCode: r.StatusCode, err: r.Err}
+			if prog != nil {
+				prog.Send(progressMsg{})
+			}
 			return nil
 		})
 	}
 
 	if err := g.Wait(); err != nil {
+		if prog != nil {
+			prog.Quit()
+			<-progDone
+		}
 		return err
+	}
+
+	// Wait for progress bar to clear before printing pass 2 output.
+	if progDone != nil {
+		<-progDone
 	}
 
 	// Pass 2: print status lines and act on 404s.
@@ -134,6 +162,8 @@ func run(args []string, stdout io.Writer) error {
 			fmt.Fprintln(stdout, "\nDry run: no bookmarks would be archived.")
 		}
 	}
+
+	fmt.Fprintf(stdout, "\nCompleted in %s\n", time.Since(start).Round(time.Millisecond))
 
 	return nil
 }
