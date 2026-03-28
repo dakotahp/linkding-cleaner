@@ -1,5 +1,7 @@
 # linkding-cleaner
 
+![linkding-cleaner](docs/images/banner.png)
+
 A CLI tool that checks all your [linkding](https://github.com/sissbruecker/linkding) bookmarks
 for broken URLs and archives any that return 404.
 
