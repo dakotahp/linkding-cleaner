@@ -22,6 +22,7 @@ Optional:
 |------|---------|-------------|
 | `--concurrency` | `10` | Number of parallel URL checks |
 | `--timeout` | `10s` | Per-request timeout |
+| `--dry-run` | | Check URLs and report what would be archived without making changes |
 | `--version` | | Print version and exit |
 
 ## Examples
