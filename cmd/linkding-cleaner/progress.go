@@ -45,7 +45,8 @@ func (m progressModel) Init() tea.Cmd {
 func (m progressModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.bar.Width = msg.Width - progressPadding*2 - 4
+		counterWidth := len(fmt.Sprintf("  %d/%d", m.total, m.total))
+		m.bar.Width = msg.Width - progressPadding - counterWidth
 		return m, nil
 
 	case progressMsg:
