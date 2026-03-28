@@ -17,6 +17,7 @@ type progressMsg struct{}
 type progressModel struct {
 	total     int
 	completed int
+	done      bool
 	bar       progress.Model
 	start     time.Time
 	elapsed   time.Duration
@@ -51,10 +52,11 @@ func (m progressModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case progressMsg:
 		m.completed++
-		cmd := m.bar.SetPercent(float64(m.completed) / float64(m.total))
 		if m.completed >= m.total {
-			return m, tea.Sequence(cmd, tea.Quit)
+			m.done = true
+			return m, tea.Quit
 		}
+		cmd := m.bar.SetPercent(float64(m.completed) / float64(m.total))
 		return m, cmd
 
 	case tickMsg:
@@ -70,6 +72,9 @@ func (m progressModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m progressModel) View() string {
+	if m.done {
+		return ""
+	}
 	pad := strings.Repeat(" ", progressPadding)
 	return "\n" +
 		pad + m.bar.View() + fmt.Sprintf("  %d/%d", m.completed, m.total) + "\n" +
