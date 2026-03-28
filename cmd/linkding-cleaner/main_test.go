@@ -172,10 +172,13 @@ func TestRun_DryRun_DoesNotArchive(t *testing.T) {
 	}))
 	defer notFoundSrv.Close()
 
+	var mu sync.Mutex
 	var archiveCalled bool
 	linkdingSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
+			mu.Lock()
 			archiveCalled = true
+			mu.Unlock()
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
@@ -192,6 +195,8 @@ func TestRun_DryRun_DoesNotArchive(t *testing.T) {
 	if err != nil {
 		t.Fatalf("run() error: %v", err)
 	}
+	mu.Lock()
+	defer mu.Unlock()
 	if archiveCalled {
 		t.Error("archive endpoint should not be called in dry-run mode")
 	}
