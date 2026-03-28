@@ -95,3 +95,5 @@ The workflow requires two repository secrets:
 - Yellow `[403]` — forbidden (not archived)
 - Plain `[200]` — healthy
 - `[ERR]` — network error or timeout (skipped)
+
+When run interactively, an animated progress bar and live elapsed time are shown during checking. Total elapsed time is always printed at the end.
