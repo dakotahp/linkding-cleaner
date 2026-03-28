@@ -269,3 +269,19 @@ func TestRun_DryRun_NoDeadLinks(t *testing.T) {
 		t.Errorf("expected 'no bookmarks would be archived', got: %s", out.String())
 	}
 }
+
+func TestRun_ElapsedTimeAlwaysPrinted(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(fakeResponse{Count: 0, Results: []fakeBookmark{}})
+	}))
+	defer srv.Close()
+
+	var out bytes.Buffer
+	if err := run([]string{"--url", srv.URL, "--token", "test-token"}, &out); err != nil {
+		t.Fatalf("run() error: %v", err)
+	}
+	if !strings.Contains(out.String(), "Completed in") {
+		t.Errorf("expected 'Completed in' in output, got: %s", out.String())
+	}
+}
