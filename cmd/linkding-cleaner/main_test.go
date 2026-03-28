@@ -165,3 +165,102 @@ func TestRun_TokenFromEnv(t *testing.T) {
 		t.Errorf("expected 'Token env-token', got %q", gotAuth)
 	}
 }
+
+func TestRun_DryRun_DoesNotArchive(t *testing.T) {
+	notFoundSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer notFoundSrv.Close()
+
+	var archiveCalled bool
+	linkdingSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			archiveCalled = true
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(fakeResponse{
+			Count:   1,
+			Results: []fakeBookmark{{ID: 1, URL: notFoundSrv.URL}},
+		})
+	}))
+	defer linkdingSrv.Close()
+
+	var out bytes.Buffer
+	err := run([]string{"--url", linkdingSrv.URL, "--token", "test-token", "--dry-run"}, &out)
+	if err != nil {
+		t.Fatalf("run() error: %v", err)
+	}
+	if archiveCalled {
+		t.Error("archive endpoint should not be called in dry-run mode")
+	}
+	if !strings.Contains(out.String(), "would be archived") {
+		t.Errorf("expected dry-run summary in output, got: %s", out.String())
+	}
+}
+
+func TestRun_DryRun_SummaryLists404URLs(t *testing.T) {
+	notFoundSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer notFoundSrv.Close()
+
+	okSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer okSrv.Close()
+
+	linkdingSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(fakeResponse{
+			Count: 2,
+			Results: []fakeBookmark{
+				{ID: 1, URL: notFoundSrv.URL},
+				{ID: 2, URL: okSrv.URL},
+			},
+		})
+	}))
+	defer linkdingSrv.Close()
+
+	var out bytes.Buffer
+	err := run([]string{"--url", linkdingSrv.URL, "--token", "test-token", "--dry-run"}, &out)
+	if err != nil {
+		t.Fatalf("run() error: %v", err)
+	}
+	output := out.String()
+	if !strings.Contains(output, "1 bookmark(s) would be archived") {
+		t.Errorf("expected count in summary, got: %s", output)
+	}
+	if !strings.Contains(output, notFoundSrv.URL) {
+		t.Errorf("expected 404 URL in summary, got: %s", output)
+	}
+	if strings.Contains(output, "archived: ") {
+		t.Errorf("expected no 'archived:' lines in dry-run output, got: %s", output)
+	}
+}
+
+func TestRun_DryRun_NoDeadLinks(t *testing.T) {
+	okSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer okSrv.Close()
+
+	linkdingSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(fakeResponse{
+			Count:   1,
+			Results: []fakeBookmark{{ID: 1, URL: okSrv.URL}},
+		})
+	}))
+	defer linkdingSrv.Close()
+
+	var out bytes.Buffer
+	err := run([]string{"--url", linkdingSrv.URL, "--token", "test-token", "--dry-run"}, &out)
+	if err != nil {
+		t.Fatalf("run() error: %v", err)
+	}
+	if !strings.Contains(out.String(), "no bookmarks would be archived") {
+		t.Errorf("expected 'no bookmarks would be archived', got: %s", out.String())
+	}
+}
