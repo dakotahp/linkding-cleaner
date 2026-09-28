@@ -75,22 +75,15 @@ go build ./cmd/linkding-cleaner
 
 ## Releasing
 
-Releases are automated via [GoReleaser](https://goreleaser.com) and GitHub Actions. Pushing a `v*` tag triggers the release workflow, which:
+Releases are automated with [release-please](https://github.com/googleapis/release-please) and [GoReleaser](https://goreleaser.com).
 
-- Builds binaries for Linux, macOS, and Windows (amd64 + arm64)
-- Creates a GitHub Release with a changelog and `checksums.txt`
-- Updates the [Homebrew tap](https://github.com/dakotahp/homebrew-tap) formula
+1. Each push to `master` updates an open release PR. It holds the next version number and the new `CHANGELOG.md` entries, both taken from the conventional commit messages (`feat:`, `fix:`, and so on).
+2. Merging the release PR tags the version and creates a GitHub Release with those notes.
+3. GoReleaser then builds binaries for Linux, macOS, and Windows (amd64 + arm64), uploads them with `checksums.txt`, and updates the [Homebrew tap](https://github.com/dakotahp/homebrew-tap) formula.
 
-**To cut a release:**
+While the version is below 1.0, `feat:` bumps the minor version and `fix:` bumps the patch version. A breaking change (`feat!:`) also bumps only the minor version.
 
-```sh
-git tag v1.2.3
-git push origin v1.2.3
-```
-
-The workflow requires two repository secrets:
-- `GITHUB_TOKEN` — provided automatically by GitHub Actions
-- `HOMEBREW_TAP_GITHUB_TOKEN` — a personal access token with write access to the `homebrew-tap` repo
+The workflow needs a `HOMEBREW_TAP_GITHUB_TOKEN` repository secret: a personal access token with write access to the `homebrew-tap` repo.
 
 ## Output
 

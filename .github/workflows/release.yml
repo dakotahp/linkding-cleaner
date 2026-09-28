@@ -2,20 +2,37 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'v*'
-
-permissions:
-  contents: write
+    branches:
+      - master
 
 jobs:
-  release:
-    name: Release
+  release-please:
+    name: Release PR
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+
+    steps:
+      - uses: googleapis/release-please-action@v5
+        id: release
+
+  # Runs here instead of on tag push: tags created with GITHUB_TOKEN do not trigger other workflows.
+  goreleaser:
+    name: GoReleaser
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
           fetch-depth: 0
 
       - uses: actions/setup-go@v7

@@ -32,11 +32,6 @@ All tests use `httptest.NewServer` — no mocks, no interfaces. The linkding cli
 
 ## Releasing
 
-Tag a version to trigger GoReleaser via GitHub Actions:
+release-please (`.github/workflows/release.yml`) keeps a release PR open on `master`. Merging it tags the version, writes `CHANGELOG.md`, and creates the GitHub Release. The same workflow then runs GoReleaser, which uploads Linux/macOS/Windows × amd64/arm64 binaries and checksums to that release and pushes a Homebrew formula to `dakotahp/homebrew-tap`. GoReleaser does not write release notes (`release.mode: keep-existing`). Do not tag versions by hand.
 
-```bash
-git tag v0.2.0 -a -m "v0.2.0"
-git push origin v0.2.0
-```
-
-GoReleaser builds Linux/macOS/Windows × amd64/arm64, publishes a GitHub Release with checksums, and pushes a Homebrew formula to `dakotahp/homebrew-tap`. The workflow requires a `HOMEBREW_TAP_GITHUB_TOKEN` secret with write access to that repo.
+Commit messages must be conventional commits (`feat:`, `fix:`, `chore:`, ...) because release-please builds the version bump and changelog from them. PRs land as merge commits; release-please ignores the merge commit's own message.
