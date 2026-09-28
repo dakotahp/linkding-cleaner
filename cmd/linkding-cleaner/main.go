@@ -23,6 +23,7 @@ type checkResult struct {
 	bookmark   linkding.Bookmark
 	statusCode int
 	err        error
+	archiveErr error
 }
 
 func main() {
@@ -50,6 +51,10 @@ func run(args []string, stdout io.Writer) error {
 	if *showVersion {
 		fmt.Fprintln(stdout, version)
 		return nil
+	}
+
+	if *concurrency < 1 {
+		return fmt.Errorf("--concurrency must be at least 1")
 	}
 
 	if *urlFlag == "" {
@@ -91,22 +96,13 @@ func run(args []string, stdout io.Writer) error {
 		}()
 	}
 
-	// Pass 1: concurrent URL checks — collect results, do not archive yet.
 	results := make([]checkResult, len(bookmarks))
-	g, gctx := errgroup.WithContext(ctx)
-	sem := make(chan struct{}, *concurrency)
+	var g errgroup.Group
+	g.SetLimit(*concurrency)
 
 	for i, bmark := range bookmarks {
-		i, bmark := i, bmark
 		g.Go(func() error {
-			select {
-			case sem <- struct{}{}:
-				defer func() { <-sem }()
-			case <-gctx.Done():
-				return gctx.Err()
-			}
-
-			checkCtx, cancel := context.WithTimeout(gctx, *timeout)
+			checkCtx, cancel := context.WithTimeout(ctx, *timeout)
 			defer cancel()
 
 			r := checker.Check(checkCtx, bmark.URL)
@@ -118,20 +114,17 @@ func run(args []string, stdout io.Writer) error {
 		})
 	}
 
-	if err := g.Wait(); err != nil {
-		if prog != nil {
-			prog.Quit()
-			<-progDone
-		}
-		return err
-	}
+	_ = g.Wait()
 
-	// Wait for progress bar to clear before printing pass 2 output.
+	// Wait for progress bar to clear before printing results.
 	if progDone != nil {
 		<-progDone
 	}
 
-	// Pass 2: print status lines and act on 404s.
+	if !*dryRun {
+		archiveNotFound(ctx, client, results, *concurrency)
+	}
+
 	var wouldArchive []string
 	for _, r := range results {
 		if r.err != nil {
@@ -140,14 +133,13 @@ func run(args []string, stdout io.Writer) error {
 		}
 		reporter.Render(stdout, r.statusCode, r.bookmark.URL)
 		if r.statusCode == http.StatusNotFound {
-			if *dryRun {
+			switch {
+			case *dryRun:
 				wouldArchive = append(wouldArchive, r.bookmark.URL)
-			} else {
-				if archiveErr := client.Archive(ctx, r.bookmark.ID); archiveErr != nil {
-					fmt.Fprintf(stdout, "  [archive error] %s: %v\n", r.bookmark.URL, archiveErr)
-				} else {
-					fmt.Fprintf(stdout, "  archived: %s\n", r.bookmark.URL)
-				}
+			case r.archiveErr != nil:
+				fmt.Fprintf(stdout, "  [archive error] %s: %v\n", r.bookmark.URL, r.archiveErr)
+			default:
+				fmt.Fprintf(stdout, "  archived: %s\n", r.bookmark.URL)
 			}
 		}
 	}
@@ -166,4 +158,20 @@ func run(args []string, stdout io.Writer) error {
 	fmt.Fprintf(stdout, "\nCompleted in %s\n", time.Since(start).Round(time.Millisecond))
 
 	return nil
+}
+
+func archiveNotFound(ctx context.Context, client *linkding.Client, results []checkResult, limit int) {
+	var g errgroup.Group
+	g.SetLimit(limit)
+	for i := range results {
+		r := &results[i]
+		if r.err != nil || r.statusCode != http.StatusNotFound {
+			continue
+		}
+		g.Go(func() error {
+			r.archiveErr = client.Archive(ctx, r.bookmark.ID)
+			return nil
+		})
+	}
+	_ = g.Wait()
 }

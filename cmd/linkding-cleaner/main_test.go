@@ -8,7 +8,9 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 )
 
 // fakeBookmark is used only for JSON encoding in test handlers.
@@ -283,5 +285,56 @@ func TestRun_ElapsedTimeAlwaysPrinted(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "Completed in") {
 		t.Errorf("expected 'Completed in' in output, got: %s", out.String())
+	}
+}
+
+func TestRun_ArchivesInParallel(t *testing.T) {
+	notFoundSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer notFoundSrv.Close()
+
+	var inFlight, maxInFlight atomic.Int32
+	linkdingSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			n := inFlight.Add(1)
+			defer inFlight.Add(-1)
+			for {
+				m := maxInFlight.Load()
+				if n <= m || maxInFlight.CompareAndSwap(m, n) {
+					break
+				}
+			}
+			time.Sleep(50 * time.Millisecond)
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		results := make([]fakeBookmark, 4)
+		for i := range results {
+			results[i] = fakeBookmark{ID: i + 1, URL: notFoundSrv.URL + "/" + strconv.Itoa(i+1)}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(fakeResponse{Count: len(results), Results: results})
+	}))
+	defer linkdingSrv.Close()
+
+	var out bytes.Buffer
+	err := run([]string{"--url", linkdingSrv.URL, "--token", "test-token", "--concurrency", "4"}, &out)
+	if err != nil {
+		t.Fatalf("run() error: %v\noutput: %s", err, out.String())
+	}
+	if got := maxInFlight.Load(); got < 2 {
+		t.Errorf("expected archive calls to run in parallel, max in flight was %d", got)
+	}
+	if n := strings.Count(out.String(), "archived:"); n != 4 {
+		t.Errorf("expected 4 archived lines, got %d\noutput: %s", n, out.String())
+	}
+}
+
+func TestRun_RejectsConcurrencyBelowOne(t *testing.T) {
+	var out bytes.Buffer
+	err := run([]string{"--url", "http://example.com", "--token", "test-token", "--concurrency", "0"}, &out)
+	if err == nil || !strings.Contains(err.Error(), "--concurrency") {
+		t.Fatalf("expected --concurrency error, got %v", err)
 	}
 }

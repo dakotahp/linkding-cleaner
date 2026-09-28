@@ -5,11 +5,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"golang.org/x/sync/errgroup"
 )
 
-const pageSize = 100
+const (
+	pageSize         = 100
+	fetchConcurrency = 4
+	httpTimeout      = 30 * time.Second
+)
 
 // Bookmark represents a single linkding bookmark.
 type Bookmark struct {
@@ -38,7 +43,7 @@ func New(baseURL, token string) *Client {
 	return &Client{
 		BaseURL:    baseURL,
 		Token:      token,
-		HTTPClient: &http.Client{},
+		HTTPClient: &http.Client{Timeout: httpTimeout},
 	}
 }
 
@@ -60,6 +65,7 @@ func (c *Client) FetchAllBookmarks(ctx context.Context) ([]Bookmark, error) {
 	pages[0] = first.Results
 
 	g, gctx := errgroup.WithContext(ctx)
+	g.SetLimit(fetchConcurrency)
 	for i := 1; i < totalPages; i++ {
 		g.Go(func() error {
 			page, err := c.fetchPage(gctx, i*pageSize)

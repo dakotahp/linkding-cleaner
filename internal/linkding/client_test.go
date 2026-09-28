@@ -6,7 +6,10 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
+	"sync/atomic"
 	"testing"
+	"time"
 )
 
 func TestFetchPage_SinglePage(t *testing.T) {
@@ -209,5 +212,49 @@ func TestArchive_ReturnsErrorOnFailure(t *testing.T) {
 	c := New(srv.URL, "test-token")
 	if err := c.Archive(context.Background(), 1); err == nil {
 		t.Fatal("expected error for 500 response, got nil")
+	}
+}
+
+func TestFetchAllBookmarks_LimitsParallelPageFetches(t *testing.T) {
+	const total = 2000
+	var inFlight, maxInFlight atomic.Int32
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := inFlight.Add(1)
+		defer inFlight.Add(-1)
+		for {
+			m := maxInFlight.Load()
+			if n <= m || maxInFlight.CompareAndSwap(m, n) {
+				break
+			}
+		}
+		time.Sleep(20 * time.Millisecond)
+
+		offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(bookmarksResponse{
+			Count:   total,
+			Results: makeBookmarks(offset+1, pageSize),
+		})
+	}))
+	defer srv.Close()
+
+	c := New(srv.URL, "test-token")
+	bookmarks, err := c.FetchAllBookmarks(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(bookmarks) != total {
+		t.Errorf("expected %d bookmarks, got %d", total, len(bookmarks))
+	}
+	if got := maxInFlight.Load(); got > fetchConcurrency {
+		t.Errorf("expected at most %d parallel page fetches, got %d", fetchConcurrency, got)
+	}
+}
+
+func TestNew_SetsHTTPTimeout(t *testing.T) {
+	c := New("http://example.com", "test-token")
+	if c.HTTPClient.Timeout == 0 {
+		t.Error("expected a non-zero HTTP client timeout")
 	}
 }
