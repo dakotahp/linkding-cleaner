@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.1](https://github.com/dakotahp/linkding-cleaner/compare/v0.3.0...v0.3.1) (2026-09-28)
+
+
+### Bug Fixes
+
+* build with Go 1.26.8 to pick up standard library security fixes ([3aee6e7](https://github.com/dakotahp/linkding-cleaner/commit/3aee6e7bbf430ac1c179df9ff0064e5e72fdc93f))
+* publish a Homebrew cask so brew install works ([a7b3cba](https://github.com/dakotahp/linkding-cleaner/commit/a7b3cbab64632c4b2c4f2254dea316a24059515e))
+* publish a Homebrew cask so brew install works ([544e639](https://github.com/dakotahp/linkding-cleaner/commit/544e6394589e82a6b9e643d9ae9627dfc49a412c))
+
 ## [0.3.0](https://github.com/dakotahp/linkding-cleaner/compare/v0.2.0...v0.3.0) (2026-09-28)
 
 
