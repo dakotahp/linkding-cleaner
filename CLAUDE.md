@@ -14,7 +14,7 @@ gofmt -w .                   # format all files
 go vet ./...                 # vet all packages
 ```
 
-CI uses `golangci-lint run --enable errcheck`. Run it locally with golangci-lint installed. The `go` directive in `go.mod` is pinned to `1.24.0` intentionally — golangci-lint's pre-built binary requires it; do not bump it with `go mod tidy`.
+CI uses `golangci-lint run --enable errcheck`. Run it locally with golangci-lint installed. CI reads the Go version from `go.mod`, so bumping the `go` directive also bumps CI.
 
 ## Architecture
 
