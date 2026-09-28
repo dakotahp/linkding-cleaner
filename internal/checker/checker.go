@@ -5,6 +5,9 @@ import (
 	"net/http"
 )
 
+// Some sites block Go's default User-Agent with a 403.
+const userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"
+
 // Result holds the outcome of a URL liveness check.
 type Result struct {
 	StatusCode int
@@ -12,13 +15,14 @@ type Result struct {
 }
 
 // Check tests whether url is reachable. It sends a HEAD request first
-// (cheaper, no body) and retries with GET if the server returns 405.
+// (cheaper, no body) and retries with GET if HEAD returns an error status,
+// because some servers answer HEAD with 404 or 405 for pages that exist.
 func Check(ctx context.Context, url string) Result {
 	code, err := doRequest(ctx, http.MethodHead, url)
 	if err != nil {
 		return Result{StatusCode: code, Err: err}
 	}
-	if code == http.StatusMethodNotAllowed {
+	if code >= http.StatusBadRequest {
 		code, err = doRequest(ctx, http.MethodGet, url)
 	}
 	return Result{StatusCode: code, Err: err}
@@ -29,6 +33,7 @@ func doRequest(ctx context.Context, method, url string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	req.Header.Set("User-Agent", userAgent)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return 0, err

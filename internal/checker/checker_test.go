@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -107,5 +108,66 @@ func TestCheck_TransportErrorNotRetried(t *testing.T) {
 	_ = requestCount
 	if result.Err == nil {
 		t.Fatal("expected transport error for closed server, got nil")
+	}
+}
+
+func TestCheck_HEADNotFoundRetriedWithGET(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodHead {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	result := checker.Check(context.Background(), srv.URL)
+	if result.Err != nil {
+		t.Fatalf("unexpected error: %v", result.Err)
+	}
+	if result.StatusCode != http.StatusOK {
+		t.Errorf("expected 200 from GET retry, got %d", result.StatusCode)
+	}
+}
+
+func TestCheck_SuccessfulHEADNotRetried(t *testing.T) {
+	var mu sync.Mutex
+	var methods []string
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		methods = append(methods, r.Method)
+		mu.Unlock()
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	checker.Check(context.Background(), srv.URL)
+	if len(methods) != 1 || methods[0] != http.MethodHead {
+		t.Errorf("expected [HEAD], got %v", methods)
+	}
+}
+
+func TestCheck_SendsBrowserUserAgent(t *testing.T) {
+	var mu sync.Mutex
+	var agents []string
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		agents = append(agents, r.UserAgent())
+		mu.Unlock()
+		if r.Method == http.MethodHead {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	checker.Check(context.Background(), srv.URL)
+	for _, ua := range agents {
+		if !strings.HasPrefix(ua, "Mozilla/5.0") {
+			t.Errorf("expected browser User-Agent, got %q", ua)
+		}
 	}
 }
