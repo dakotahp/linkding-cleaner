@@ -32,6 +32,6 @@ All tests use `httptest.NewServer` — no mocks, no interfaces. The linkding cli
 
 ## Releasing
 
-release-please (`.github/workflows/release.yml`) keeps a release PR open on `master`. Merging it tags the version, writes `CHANGELOG.md`, and creates the GitHub Release. The same workflow then runs GoReleaser, which uploads Linux/macOS/Windows × amd64/arm64 binaries and checksums to that release and pushes a Homebrew formula to `dakotahp/homebrew-tap`. GoReleaser does not write release notes (`release.mode: keep-existing`). Do not tag versions by hand.
+release-please (`.github/workflows/release.yml`) keeps a release PR open on `master`. Merging it tags the version, writes `CHANGELOG.md`, and creates the GitHub Release. The same workflow then runs GoReleaser, which uploads Linux/macOS/Windows × amd64/arm64 binaries and checksums to that release and pushes a Homebrew cask to `dakotahp/homebrew-tap`. GoReleaser does not write release notes (`release.mode: keep-existing`). Do not tag versions by hand.
 
 Commit messages must be conventional commits (`feat:`, `fix:`, `chore:`, ...) because release-please builds the version bump and changelog from them. PRs land as merge commits; release-please ignores the merge commit's own message.
