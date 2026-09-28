@@ -171,3 +171,26 @@ func TestCheck_SendsBrowserUserAgent(t *testing.T) {
 		}
 	}
 }
+
+func TestIsDeadDomain_NoSuchHost(t *testing.T) {
+	result := checker.Check(context.Background(), "http://linkding-cleaner-test.invalid")
+	if !checker.IsDeadDomain(result.Err) {
+		t.Errorf("expected dead domain for .invalid host, got err: %v", result.Err)
+	}
+}
+
+func TestIsDeadDomain_ConnectionRefused(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	srv.Close()
+
+	result := checker.Check(context.Background(), srv.URL)
+	if checker.IsDeadDomain(result.Err) {
+		t.Errorf("connection refused should not count as a dead domain, got err: %v", result.Err)
+	}
+}
+
+func TestIsDeadDomain_Nil(t *testing.T) {
+	if checker.IsDeadDomain(nil) {
+		t.Error("nil error should not count as a dead domain")
+	}
+}

@@ -3,7 +3,7 @@
 ![linkding-cleaner](docs/images/banner.png)
 
 A CLI tool that checks all your [linkding](https://github.com/sissbruecker/linkding) bookmarks
-for broken URLs and archives any that return 404.
+for broken URLs and archives any that return 404 or 410.
 
 ## Usage
 
@@ -25,6 +25,7 @@ Optional:
 | `--concurrency` | `10` | Number of parallel URL checks |
 | `--timeout` | `10s` | Per-request timeout |
 | `--dry-run` | | Check URLs and report what would be archived without making changes |
+| `--archive-dead-domains` | | Also archive bookmarks whose domain no longer exists in DNS. If more than half of all bookmarks fail DNS, the run stops and archives nothing |
 | `--version` | | Print version and exit |
 
 ## Examples
@@ -93,9 +94,10 @@ The workflow requires two repository secrets:
 
 ## Output
 
-- Red `[404]` — broken link, automatically archived in linkding
+- Red `[404]` / `[410]` — broken link, automatically archived in linkding
 - Yellow `[403]` — forbidden (not archived)
 - Plain `[200]` — healthy
+- `[DNS]`: with `--archive-dead-domains`, the domain no longer exists and the bookmark is archived. Without the flag it shows as `[ERR]`.
 - `[ERR]` — network error or timeout (skipped)
 
 When run interactively, an animated progress bar and live elapsed time are shown during checking. Total elapsed time is always printed at the end.

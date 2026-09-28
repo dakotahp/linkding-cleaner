@@ -13,10 +13,10 @@ const (
 )
 
 // Render writes a status line for the given URL to w.
-// 404 is printed in red, 403 in yellow, all others in plain text.
+// 404 and 410 are printed in red, 403 in yellow, all others in plain text.
 func Render(w io.Writer, statusCode int, url string) {
 	switch statusCode {
-	case http.StatusNotFound:
+	case http.StatusNotFound, http.StatusGone:
 		fmt.Fprintf(w, "%s[%d] %s%s\n", colorRed, statusCode, url, colorReset)
 	case http.StatusForbidden:
 		fmt.Fprintf(w, "%s[%d] %s%s\n", colorYellow, statusCode, url, colorReset)

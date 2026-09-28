@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"sync/atomic"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -23,6 +24,7 @@ type checkResult struct {
 	bookmark   linkding.Bookmark
 	statusCode int
 	err        error
+	deadDomain bool
 	archiveErr error
 }
 
@@ -43,6 +45,7 @@ func run(args []string, stdout io.Writer) error {
 	timeout := fs.Duration("timeout", 10*time.Second, "per-request timeout for URL checks")
 	showVersion := fs.Bool("version", false, "print version and exit")
 	dryRun := fs.Bool("dry-run", false, "check URLs and report what would be archived without making changes")
+	archiveDeadDomains := fs.Bool("archive-dead-domains", false, "also archive bookmarks whose domain no longer exists in DNS")
 
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -121,18 +124,29 @@ func run(args []string, stdout io.Writer) error {
 		<-progDone
 	}
 
+	if *archiveDeadDomains {
+		dead := confirmDeadDomains(ctx, results, *concurrency, *timeout)
+		if dead*2 > len(results) {
+			return fmt.Errorf("%d of %d bookmarks have domains that do not resolve; "+
+				"this looks like a DNS problem on your side, so nothing was archived", dead, len(results))
+		}
+	}
+
 	if !*dryRun {
-		archiveNotFound(ctx, client, results, *concurrency)
+		archiveDead(ctx, client, results, *concurrency)
 	}
 
 	var wouldArchive []string
 	for _, r := range results {
-		if r.err != nil {
+		switch {
+		case r.deadDomain:
+			fmt.Fprintf(stdout, "[DNS] %s: no such host\n", r.bookmark.URL)
+		case r.err != nil:
 			fmt.Fprintf(stdout, "[ERR] %s: %v\n", r.bookmark.URL, r.err)
-			continue
+		default:
+			reporter.Render(stdout, r.statusCode, r.bookmark.URL)
 		}
-		reporter.Render(stdout, r.statusCode, r.bookmark.URL)
-		if r.statusCode == http.StatusNotFound {
+		if r.isDead() {
 			switch {
 			case *dryRun:
 				wouldArchive = append(wouldArchive, r.bookmark.URL)
@@ -160,12 +174,44 @@ func run(args []string, stdout io.Writer) error {
 	return nil
 }
 
-func archiveNotFound(ctx context.Context, client *linkding.Client, results []checkResult, limit int) {
+func (r checkResult) isDead() bool {
+	if r.err != nil {
+		return r.deadDomain
+	}
+	return r.statusCode == http.StatusNotFound || r.statusCode == http.StatusGone
+}
+
+// confirmDeadDomains checks each "no such host" failure a second time and
+// marks the ones that fail again as dead. It returns how many it marked.
+func confirmDeadDomains(ctx context.Context, results []checkResult, limit int, timeout time.Duration) int {
+	var g errgroup.Group
+	g.SetLimit(limit)
+	var dead atomic.Int32
+	for i := range results {
+		r := &results[i]
+		if !checker.IsDeadDomain(r.err) {
+			continue
+		}
+		g.Go(func() error {
+			checkCtx, cancel := context.WithTimeout(ctx, timeout)
+			defer cancel()
+			if checker.IsDeadDomain(checker.Check(checkCtx, r.bookmark.URL).Err) {
+				r.deadDomain = true
+				dead.Add(1)
+			}
+			return nil
+		})
+	}
+	_ = g.Wait()
+	return int(dead.Load())
+}
+
+func archiveDead(ctx context.Context, client *linkding.Client, results []checkResult, limit int) {
 	var g errgroup.Group
 	g.SetLimit(limit)
 	for i := range results {
 		r := &results[i]
-		if r.err != nil || r.statusCode != http.StatusNotFound {
+		if !r.isDead() {
 			continue
 		}
 		g.Go(func() error {

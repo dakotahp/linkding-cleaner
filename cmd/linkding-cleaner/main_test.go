@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -336,5 +337,127 @@ func TestRun_RejectsConcurrencyBelowOne(t *testing.T) {
 	err := run([]string{"--url", "http://example.com", "--token", "test-token", "--concurrency", "0"}, &out)
 	if err == nil || !strings.Contains(err.Error(), "--concurrency") {
 		t.Fatalf("expected --concurrency error, got %v", err)
+	}
+}
+
+const deadDomainURL = "http://linkding-cleaner-test.invalid/"
+
+func newLinkdingServer(t *testing.T, bookmarks []fakeBookmark) (string, func() []int) {
+	t.Helper()
+	var mu sync.Mutex
+	var archived []int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+			id, _ := strconv.Atoi(parts[2])
+			mu.Lock()
+			archived = append(archived, id)
+			mu.Unlock()
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(fakeResponse{Count: len(bookmarks), Results: bookmarks})
+	}))
+	t.Cleanup(srv.Close)
+	return srv.URL, func() []int {
+		mu.Lock()
+		defer mu.Unlock()
+		return slices.Sorted(slices.Values(archived))
+	}
+}
+
+func newStatusServer(t *testing.T, status int) string {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(status)
+	}))
+	t.Cleanup(srv.Close)
+	return srv.URL
+}
+
+func TestRun_ArchivesGoneBookmarks(t *testing.T) {
+	baseURL, archived := newLinkdingServer(t, []fakeBookmark{
+		{ID: 1, URL: newStatusServer(t, http.StatusGone)},
+		{ID: 2, URL: newStatusServer(t, http.StatusOK)},
+	})
+
+	var out bytes.Buffer
+	if err := run([]string{"--url", baseURL, "--token", "t"}, &out); err != nil {
+		t.Fatalf("run() error: %v\noutput: %s", err, out.String())
+	}
+	if got := archived(); !slices.Equal(got, []int{1}) {
+		t.Errorf("expected [1] archived, got %v", got)
+	}
+}
+
+func TestRun_DeadDomainNotArchivedWithoutFlag(t *testing.T) {
+	baseURL, archived := newLinkdingServer(t, []fakeBookmark{
+		{ID: 1, URL: deadDomainURL},
+		{ID: 2, URL: newStatusServer(t, http.StatusOK)},
+		{ID: 3, URL: newStatusServer(t, http.StatusOK)},
+	})
+
+	var out bytes.Buffer
+	if err := run([]string{"--url", baseURL, "--token", "t"}, &out); err != nil {
+		t.Fatalf("run() error: %v\noutput: %s", err, out.String())
+	}
+	if got := archived(); len(got) != 0 {
+		t.Errorf("expected nothing archived, got %v", got)
+	}
+}
+
+func TestRun_DeadDomainArchivedWithFlag(t *testing.T) {
+	baseURL, archived := newLinkdingServer(t, []fakeBookmark{
+		{ID: 1, URL: deadDomainURL},
+		{ID: 2, URL: newStatusServer(t, http.StatusOK)},
+		{ID: 3, URL: newStatusServer(t, http.StatusOK)},
+	})
+
+	var out bytes.Buffer
+	if err := run([]string{"--url", baseURL, "--token", "t", "--archive-dead-domains"}, &out); err != nil {
+		t.Fatalf("run() error: %v\noutput: %s", err, out.String())
+	}
+	if got := archived(); !slices.Equal(got, []int{1}) {
+		t.Errorf("expected [1] archived, got %v", got)
+	}
+	if !strings.Contains(out.String(), "[DNS] "+deadDomainURL) {
+		t.Errorf("expected [DNS] line in output, got: %s", out.String())
+	}
+}
+
+func TestRun_DeadDomainInDryRunSummary(t *testing.T) {
+	baseURL, archived := newLinkdingServer(t, []fakeBookmark{
+		{ID: 1, URL: deadDomainURL},
+		{ID: 2, URL: newStatusServer(t, http.StatusOK)},
+		{ID: 3, URL: newStatusServer(t, http.StatusOK)},
+	})
+
+	var out bytes.Buffer
+	if err := run([]string{"--url", baseURL, "--token", "t", "--archive-dead-domains", "--dry-run"}, &out); err != nil {
+		t.Fatalf("run() error: %v\noutput: %s", err, out.String())
+	}
+	if got := archived(); len(got) != 0 {
+		t.Errorf("expected nothing archived in dry run, got %v", got)
+	}
+	if !strings.Contains(out.String(), "1 bookmark(s) would be archived") {
+		t.Errorf("expected dead domain in dry-run summary, got: %s", out.String())
+	}
+}
+
+func TestRun_MostlyDeadDomainsArchivesNothing(t *testing.T) {
+	baseURL, archived := newLinkdingServer(t, []fakeBookmark{
+		{ID: 1, URL: deadDomainURL + "a"},
+		{ID: 2, URL: deadDomainURL + "b"},
+		{ID: 3, URL: newStatusServer(t, http.StatusNotFound)},
+	})
+
+	var out bytes.Buffer
+	err := run([]string{"--url", baseURL, "--token", "t", "--archive-dead-domains"}, &out)
+	if err == nil || !strings.Contains(err.Error(), "nothing was archived") {
+		t.Fatalf("expected abort error, got %v\noutput: %s", err, out.String())
+	}
+	if got := archived(); len(got) != 0 {
+		t.Errorf("expected nothing archived, got %v", got)
 	}
 }
