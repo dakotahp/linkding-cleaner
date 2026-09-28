@@ -28,15 +28,12 @@ archives:
 checksum:
   name_template: checksums.txt
 
+# release-please creates the GitHub Release and its notes; GoReleaser only uploads the artifacts.
+release:
+  mode: keep-existing
+
 changelog:
-  sort: asc
-  filters:
-    exclude:
-      - "^docs:"
-      - "^test:"
-      - "^chore:"
-      - Merge pull request
-      - Merge branch
+  disable: true
 
 brews:
   - name: linkding-cleaner
