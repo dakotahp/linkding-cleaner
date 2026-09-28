@@ -79,7 +79,7 @@ Releases are automated with [release-please](https://github.com/googleapis/relea
 
 1. Each push to `master` updates an open release PR. It holds the next version number and the new `CHANGELOG.md` entries, both taken from the conventional commit messages (`feat:`, `fix:`, and so on).
 2. Merging the release PR tags the version and creates a GitHub Release with those notes.
-3. GoReleaser then builds binaries for Linux, macOS, and Windows (amd64 + arm64), uploads them with `checksums.txt`, and updates the [Homebrew tap](https://github.com/dakotahp/homebrew-tap) formula.
+3. GoReleaser then builds binaries for Linux, macOS, and Windows (amd64 + arm64), uploads them with `checksums.txt`, and updates the cask in the [Homebrew tap](https://github.com/dakotahp/homebrew-tap).
 
 While the version is below 1.0, `feat:` bumps the minor version and `fix:` bumps the patch version. A breaking change (`feat!:`) also bumps only the minor version.
 

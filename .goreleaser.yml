@@ -35,7 +35,7 @@ release:
 changelog:
   disable: true
 
-brews:
+homebrew_casks:
   - name: linkding-cleaner
     homepage: https://github.com/dakotahp/linkding-cleaner
     description: CLI tool to check and archive dead bookmarks in linkding
@@ -46,7 +46,10 @@ brews:
     commit_author:
       name: goreleaserbot
       email: bot@goreleaser.com
-    install: |
-      bin.install "linkding-cleaner"
-    test: |
-      system "#{bin}/linkding-cleaner", "--version"
+    hooks:
+      post:
+        # The binary is not signed by Apple, so macOS would refuse to run it without this.
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/linkding-cleaner"]
+          end
