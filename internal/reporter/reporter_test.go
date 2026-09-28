@@ -59,3 +59,12 @@ func TestRender_OtherStatus_NoColor(t *testing.T) {
 		t.Errorf("expected status code 500 in output, got: %q", got)
 	}
 }
+
+func TestRender_410_IsRed(t *testing.T) {
+	var buf bytes.Buffer
+	reporter.Render(&buf, http.StatusGone, "https://example.com/removed")
+	got := buf.String()
+	if !strings.Contains(got, "\033[31m") {
+		t.Errorf("expected red ANSI code (\\033[31m) in output, got: %q", got)
+	}
+}

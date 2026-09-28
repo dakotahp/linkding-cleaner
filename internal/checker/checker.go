@@ -2,6 +2,8 @@ package checker
 
 import (
 	"context"
+	"errors"
+	"net"
 	"net/http"
 )
 
@@ -40,4 +42,11 @@ func doRequest(ctx context.Context, method, url string) (int, error) {
 	}
 	resp.Body.Close()
 	return resp.StatusCode, nil
+}
+
+// IsDeadDomain reports whether err means the URL's host does not exist in DNS.
+// Timeouts and other network errors do not count, because they are often temporary.
+func IsDeadDomain(err error) bool {
+	var dnsErr *net.DNSError
+	return errors.As(err, &dnsErr) && dnsErr.IsNotFound
 }
