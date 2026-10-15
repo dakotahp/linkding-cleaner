@@ -49,7 +49,7 @@ homebrew_casks:
     hooks:
       post:
         # The binary is not signed by Apple, so macOS would refuse to run it without this.
-        install: |
-          if OS.mac?
-            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/linkding-cleaner"]
+        install_steps: |
+          on_macos do
+            run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{ .StagedPath }}/linkding-cleaner"]
           end
