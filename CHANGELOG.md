@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.3](https://github.com/dakotahp/linkding-cleaner/compare/v0.3.2...v0.3.3) (2026-10-17)
+
+
+### Bug Fixes
+
+* use install_steps for the Homebrew cask hook ([8188522](https://github.com/dakotahp/linkding-cleaner/commit/818852254f503318d45cd88905c7e6786fb62f4b))
+
 ## [0.3.2](https://github.com/dakotahp/linkding-cleaner/compare/v0.3.1...v0.3.2) (2026-10-14)
 
 
