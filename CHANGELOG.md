@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.3](https://github.com/dakotahp/linkding-cleaner/compare/v0.3.2...v0.3.3) (2026-10-23)
+
+
+### Bug Fixes
+
+* build with Go 1.26.10 for crypto/x509 fix (GO-2026-6809) ([0e70f2e](https://github.com/dakotahp/linkding-cleaner/commit/0e70f2ea189fcc378cfb3d522cc563e8dbaee7df))
+* use install_steps for the Homebrew cask hook ([8188522](https://github.com/dakotahp/linkding-cleaner/commit/818852254f503318d45cd88905c7e6786fb62f4b))
+
 ## [0.3.2](https://github.com/dakotahp/linkding-cleaner/compare/v0.3.1...v0.3.2) (2026-10-14)
 
 
