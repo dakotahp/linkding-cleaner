@@ -2,7 +2,7 @@ module github.com/dakotahp/linkding-cleaner
 
 go 1.26.0
 
-toolchain go1.26.10
+toolchain go1.26.11
 
 require (
 	github.com/charmbracelet/bubbles v1.0.0
