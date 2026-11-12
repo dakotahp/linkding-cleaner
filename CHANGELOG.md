@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.4](https://github.com/dakotahp/linkding-cleaner/compare/v0.3.3...v0.3.4) (2026-11-12)
+
+
+### Bug Fixes
+
+* build with Go 1.26.11 for net/http fix (GO-2026-6859) ([9d9e86b](https://github.com/dakotahp/linkding-cleaner/commit/9d9e86be58ce2fd133743425133d2b5b33b6eb46))
+* build with Go 1.26.11 for net/http fix (GO-2026-6859) ([54172b3](https://github.com/dakotahp/linkding-cleaner/commit/54172b376c31a9eeab41da2d6ecca8c10afdf702))
+
 ## [0.3.3](https://github.com/dakotahp/linkding-cleaner/compare/v0.3.2...v0.3.3) (2026-10-23)
 
 
